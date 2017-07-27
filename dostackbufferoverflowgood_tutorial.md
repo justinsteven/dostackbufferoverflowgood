@@ -1970,7 +1970,7 @@ it is a whole lot more slick than just chucking `NOP`'s in until things work.
     way.  32-bit processes running on 64-bit Windows (i.e. within WoW64) get
     subtly cranky when ESP is not 4-byte aligned, and various function calls
     made in that state quietly fail. It has been the source of many frustrated
-    nights.  ESP is already 4-byte aligned, and by subtracting 0x30 from it
+    nights.  ESP is already 4-byte aligned, and by subtracting 0x10 from it
     (which is divisible by 4) we know it will remain 4-byte aligned.
   }
 }
@@ -2070,7 +2070,7 @@ To recap, we now know how to:
 * Examine a binary to determine some locations of interest;
 * Explore function `CALL`/`RET`urn mechanics in a debugger and understand how they work;
 * Trigger a simple Stack Buffer Overflow bug with a bunch of `A`'s;
-* Discover the offset to a Saved Return Pointer with `pattern_generate.rb` and `"!mona findmsp"`;
+* Discover the offset to a Saved Return Pointer with `pattern_create.rb` and `"!mona findmsp"`;
 * Confirm the discovered offset and gain tight EIP control;
 * Put stuff at a location that `ESP` points to at the time of the return to the overwritten Saved Return Pointer;
 * Reason about and check for bad characters;
