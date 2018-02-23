@@ -8,7 +8,7 @@ toc: true
 ---
 
 \begin{center}
-  Last updated 2016-07-27
+  Last updated 2018-02-23
 
   \url{https://github.com/justinsteven/dostackbufferoverflowgood}
 \end{center}
@@ -381,8 +381,8 @@ The free version of IDA Pro comes with some limitations (as of the time of
 writing):
 
 * Non-commercial use only
-* It's quite old (based on IDA v5.0 from 2006)
-* Lacks support for many processors and file formats (most notably, it does not support 64-bit files)
+* Lacks all features introduced in IDA > v7.0
+* Lacks support for many processors and file formats (however, it does support 64-bit files now)
 * Lacks the debugging feature
 * Lacks support
 
@@ -998,7 +998,7 @@ it's in `tools/exploits/`
 Use `pattern_create.rb` to generate 1024 characters of cyclic pattern.
 
 ```
-% ~/opt/metasploit-framework/tools/exploit/pattern_create.rb 1024
+% ~/opt/metasploit-framework/tools/exploit/pattern_create.rb -l 1024
 
 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1
 Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3
@@ -1084,7 +1084,7 @@ We can run Metasploit's `pattern_offset.rb` with an argument of either "9eA8"
 or "39654138":
 
 ```
-% ~/opt/metasploit-framework/tools/exploit/pattern_offset.rb 39654138
+% ~/opt/metasploit-framework/tools/exploit/pattern_offset.rb -q 39654138
 [*] Exact match at offset 146
 ```
 
