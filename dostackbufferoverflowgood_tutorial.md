@@ -1751,7 +1751,7 @@ Evasion options for payload/windows/exec:
 The options we will provide to `msfvenom` are:
 
 * `-p windows/exec` (we want Windows shellcode that will `exec`ute a command)
-* `-b '\x00\x0A` (the list of bad characters we determined earlier, so that `msfvenom` can avoid having them in the generated shellcode)
+* `-b '\x00\x0A'` (the list of bad characters we determined earlier, so that `msfvenom` can avoid having them in the generated shellcode)
 * `-f python` (output shellcode in a Python-friendly format)
 * `--var-name shellcode_calc` (tell `msfvenom` to output Python code that sets a variable called `shellcode_calc`)
 * `CMD=calc.exe EXITFUNC=thread` (options for the `windows/exec` payload)
