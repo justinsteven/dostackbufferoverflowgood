@@ -323,7 +323,7 @@ Spoilers:
 
 ---
 
-A `CALL` is used when one functions wants to invoke another function (or itself
+A `CALL` is used when one function wants to invoke another function (or itself
 in the case of recursive code) with the intention of having that `CALL`ed
 function `RET`urn to the next line of code in the calling function.
 
