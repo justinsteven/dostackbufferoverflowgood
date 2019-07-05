@@ -1695,10 +1695,10 @@ payloads` option. We will be using the `windows/exec` payload, so that we end
 up with shellcode that will simply execute a command.
 
 To see the options that you need to specify for a given payload, run `msfvenom`
-with the payload specified using `-p` and add the `--payload-options` argument:
+with the payload specified using `-p` and add the `--list-options` argument:
 
 ```
-% ~/opt/metasploit-framework/msfvenom -p windows/exec --payload-options
+% ~/opt/metasploit-framework/msfvenom -p windows/exec --list-options
 Options for payload/windows/exec:
 
 
