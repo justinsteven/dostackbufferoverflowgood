@@ -1,5 +1,5 @@
 dostackbufferoverflowgood_tutorial.pdf: dostackbufferoverflowgood_tutorial.md
-	pandoc --latex-engine=xelatex $< -o $@
+	pandoc --pdf-engine=xelatex $< -o $@
 
 all: dostackbufferoverflowgood_tutorial.pdf
 
