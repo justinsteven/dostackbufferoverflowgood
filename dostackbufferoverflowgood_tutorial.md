@@ -2160,7 +2160,7 @@ License
 \newpage
 # Appendix A - Python 3 Support
 
-As mentioned at the beginning of this document, Python 2 is officialy End of
+As mentioned at the beginning of this document, Python 2 is officially End of
 Life as of 1 January 2020. The code examples in this document were
 intentionally written for Python 2. If this was your first time writing a
 stack buffer overflow exploit, I recommend that you use Python 2.
